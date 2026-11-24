@@ -33,3 +33,37 @@ Thumbs.db
 db.db
 Desktop.ini
 .DS_Store
+
+# Local secrets
+.env
+.env.*
+!.env.example
+.env.backup
+
+# Python environment
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+
+# Logs and backups
+*.log
+*.bak
+*.backup
+
+# Local secrets
+.env
+.env.*
+!.env.example
+.env.backup
+
+# Python environment
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+
+# Logs and backups
+*.log
+*.bak
+*.backup

@@ -199,6 +199,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                 prompt=message_text,
                 model=session_model,
                 agent=session_mode,
+                system_prompt=config.custom_system_prompt,
             )
 
             if response_text is None:
@@ -215,6 +216,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                     prompt=message_text,
                     model=session_model,
                     agent=session_mode,
+                    system_prompt=config.custom_system_prompt,
                 )
         except OpenCodeConnectionError as conn_err:
             # Connection crashed/failed - Reset flag and self-heal!
@@ -239,6 +241,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                     prompt=message_text,
                     model=session_model,
                     agent=session_mode,
+                    system_prompt=config.custom_system_prompt,
                 )
             else:
                 raise conn_err
@@ -278,6 +281,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                     prompt=message_text,
                     model=session_model,
                     agent=session_mode,
+                    system_prompt=config.custom_system_prompt,
                 )
             else:
                 raise
@@ -421,18 +425,41 @@ async def _create_session(oc_client, user_id, session_mgr, config):
     return session_id
 
 
-async def _send_to_opencode(oc_client, session_id, prompt, model, agent):
-    """Send a prompt to OpenCode HTTP API.
+async def _send_to_opencode(
+    oc_client,
+    session_id,
+    prompt,
+    model,
+    agent,
+    system_prompt=""
+):
+    """Send a prompt to OpenCode HTTP API with optional custom instructions."""
 
-    Returns:
-        The response text from OpenCode, or None if the session does not exist.
-    """
-    logger.info(f"Sending to OpenCode API: session={session_id[:8]}... model={model} agent={agent}")
-    response = await oc_client.send_message(session_id, prompt, model=model, agent=agent)
+    logger.info(
+        f"Sending to OpenCode API: session={session_id[:8]}... "
+        f"model={model} agent={agent}"
+    )
+
+    # Add custom instructions to every user request
+    if system_prompt and system_prompt.strip():
+        prompt = (
+            f"[Дополнительные инструкции]\n"
+            f"{system_prompt.strip()}\n"
+            f"[Конец дополнительных инструкций]\n\n"
+            f"Запрос пользователя:\n{prompt}"
+        )
+
+    response = await oc_client.send_message(
+        session_id,
+        prompt,
+        model=model,
+        agent=agent
+    )
+
     if response is None:
         return None
-    return response.content
 
+    return response.content
 
 async def _keep_typing(update: Update, max_seconds: int = 3600) -> None:
     """Keep sending typing indicators while we wait for OpenCode.
@@ -1063,6 +1090,7 @@ async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
                 prompt=prompt_text,
                 model=session_model,
                 agent=session_mode,
+                system_prompt=config.custom_system_prompt,
             )
 
             # Increment count

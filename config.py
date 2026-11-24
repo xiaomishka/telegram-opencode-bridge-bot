@@ -61,6 +61,9 @@ class Config:
     project_scan_depth: int = field(
         default_factory=lambda: int(os.getenv('PROJECT_SCAN_DEPTH', '2'))
     )
+    custom_system_prompt: str = field(
+        default_factory=lambda: os.getenv('CUSTOM_SYSTEM_PROMPT', '').strip()
+    )
 
     # Limits
     max_message_length: int = field(

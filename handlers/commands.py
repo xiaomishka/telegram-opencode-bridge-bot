@@ -1792,6 +1792,23 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
                 )
 
     # 2. Switch Model tap
+    elif data.startswith("mid:"):
+        token = data[len("mid:"):]
+        new_model = context.user_data.get("model_callback_map", {}).get(token)
+
+        if not new_model:
+            await query.edit_message_text(
+                "⚠️ Список моделей устарел. Откройте /models и выберите модель заново."
+            )
+            return
+
+        await session_mgr.set_model(user_id, new_model)
+        await query.edit_message_text(
+            f"✅ Model changed to <code>{html.escape(new_model)}</code>\\n\\n"
+            f"<i>This applies to your current session.</i>",
+            parse_mode="HTML",
+        )
+
     elif data.startswith("model:"):
         new_model = data[len("model:"):]
         await session_mgr.set_model(user_id, new_model)
@@ -1852,6 +1869,15 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             p_name = target_provider.get("name", p_id)
             emoji = provider_emojis.get(p_id.lower(), "⚪")
             models = target_provider.get("models", {})
+
+            # OpenRouter: показываем только бесплатные модели
+            if p_id.lower() == "openrouter":
+                models = {
+                    m_id: m
+                    for m_id, m in models.items()
+                    if m_id.lower().endswith(":free")
+                }
+
             
             sub_keyboard = []
             sub_keyboard.append([InlineKeyboardButton(f"───【 {emoji} {p_name.upper()} MODELS 】───", callback_data="noop")])
@@ -1862,7 +1888,12 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
                 path = f"{p_id}/{m_id}"
                 
                 display_name = m_name[:15] + "..." if len(m_name) > 18 else m_name
-                model_buttons.append(InlineKeyboardButton(f"🤖 {display_name}", callback_data=f"model:{path}"))
+                model_map = context.user_data.setdefault("model_callback_map", {})
+                next_id = context.user_data.get("model_callback_next_id", 0)
+                token = str(next_id)
+                context.user_data["model_callback_next_id"] = next_id + 1
+                model_map[token] = path
+                model_buttons.append(InlineKeyboardButton(f"🤖 {display_name}", callback_data=f"mid:{token}"))
             
             for j in range(0, len(model_buttons), 2):
                 sub_keyboard.append(model_buttons[j:j+2])
